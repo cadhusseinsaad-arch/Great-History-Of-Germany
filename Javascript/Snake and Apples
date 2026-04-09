@@ -1,0 +1,134 @@
+const readline = require('readline');
+
+const WIDTH = 20;
+const HEIGHT = 20;
+
+let snake = [{x: 10, y: 10}];
+let direction = {x: 0, y: 0};
+let food = {x: 5, y: 5};
+let score = 0;
+let gameOver = false;
+
+function generateFood() {
+    do {
+        food.x = Math.floor(Math.random() * WIDTH);
+        food.y = Math.floor(Math.random() * HEIGHT);
+    } while (snake.some(segment => segment.x === food.x && segment.y === food.y));
+}
+
+function draw() {
+    console.clear();
+    let grid = Array.from({length: HEIGHT}, () => Array(WIDTH).fill(' '));
+
+    // Draw walls
+    for (let i = 0; i < WIDTH; i++) {
+        grid[0][i] = '#';
+        grid[HEIGHT-1][i] = '#';
+    }
+    for (let i = 0; i < HEIGHT; i++) {
+        grid[i][0] = '#';
+        grid[i][WIDTH-1] = '#';
+    }
+
+    // Draw snake
+    snake.forEach((segment, index) => {
+        if (segment.x >= 0 && segment.x < WIDTH && segment.y >= 0 && segment.y < HEIGHT) {
+            grid[segment.y][segment.x] = index === 0 ? 'O' : 'o';
+        }
+    });
+
+    // Draw food
+    if (food.x >= 0 && food.x < WIDTH && food.y >= 0 && food.y < HEIGHT) {
+        grid[food.y][food.x] = '@';
+    }
+
+    // Print grid
+    console.log(grid.map(row => row.join('')).join('\n'));
+    console.log(`Score: ${score}`);
+    if (gameOver) {
+        console.log('Game Over! Press R to restart or Q to quit.');
+    }
+}
+
+function update() {
+    if (gameOver) return;
+
+    const head = {x: snake[0].x + direction.x, y: snake[0].y + direction.y};
+
+    // Check wall collision
+    if (head.x <= 0 || head.x >= WIDTH-1 || head.y <= 0 || head.y >= HEIGHT-1) {
+        gameOver = true;
+        return;
+    }
+
+    // Check self collision
+    if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+        gameOver = true;
+        return;
+    }
+
+    snake.unshift(head);
+
+    // Check food
+    if (head.x === food.x && head.y === food.y) {
+        score++;
+        generateFood();
+    } else {
+        snake.pop();
+    }
+}
+
+function handleInput(key) {
+    if (gameOver) {
+        if (key === 'r' || key === 'R') {
+            resetGame();
+        } else if (key === 'q' || key === 'Q') {
+            process.exit();
+        }
+        return;
+    }
+
+    switch (key) {
+        case 'w':
+        case '\u001b[A': // Up arrow
+            if (direction.y === 0) direction = {x: 0, y: -1};
+            break;
+        case 's':
+        case '\u001b[B': // Down arrow
+            if (direction.y === 0) direction = {x: 0, y: 1};
+            break;
+        case 'a':
+        case '\u001b[D': // Left arrow
+            if (direction.x === 0) direction = {x: -1, y: 0};
+            break;
+        case 'd':
+        case '\u001b[C': // Right arrow
+            if (direction.x === 0) direction = {x: 1, y: 0};
+            break;
+    }
+}
+
+function resetGame() {
+    snake = [{x: 10, y: 10}];
+    direction = {x: 0, y: 0};
+    score = 0;
+    gameOver = false;
+    generateFood();
+}
+
+process.stdin.setRawMode(true);
+process.stdin.resume();
+process.stdin.setEncoding('utf8');
+
+process.stdin.on('data', (key) => {
+    if (key === '\u0003') { // Ctrl+C
+        process.exit();
+    }
+    handleInput(key);
+});
+
+generateFood();
+setInterval(() => {
+    update();
+    draw();
+}, 200);
